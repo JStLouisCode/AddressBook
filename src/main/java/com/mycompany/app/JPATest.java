@@ -13,9 +13,6 @@ import java.util.Optional;
 @SpringBootApplication
 public class JPATest {
 
-    public static void main(String[] args) {
-        SpringApplication.run(JPATest.class, args);
-    }
 
     // no @Bean needed here because we use a @Component (DemoRunner) below
 }
