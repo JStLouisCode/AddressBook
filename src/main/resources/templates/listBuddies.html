@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Address Books</title>
+</head>
+<body>
+<h1>All Address Books</h1>
+
+<ul>
+    <li th:each="book : ${addressBooks}">
+        AddressBook ID:
+        <span th:text="${book.id}">1</span>
+        -
+        <a th:href="@{|/addressbook/${book.id}|}">View Buddies</a>
+    </li>
+</ul>
+</body>
+</html>
