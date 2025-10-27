@@ -3,6 +3,13 @@
 <head>
     <meta charset="UTF-8" />
     <title>Buddies</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+        .form-section { background: #f0f0f0; padding: 15px; margin: 20px 0; border-radius: 5px; }
+        input { padding: 5px; margin: 5px; }
+        button { padding: 8px 15px; margin: 5px; cursor: pointer; }
+        .buddy-item { padding: 10px; margin: 5px 0; background: #fff; border: 1px solid #ddd; border-radius: 3px; }
+    </style>
 </head>
 <body>
 
@@ -16,18 +23,45 @@
 <div th:if="${book != null}">
     <h1 th:text="'Buddies in Address Book ' + ${book.id}">Buddies</h1>
 
-    <ul>
+    <!-- Add Buddy Form -->
+    <div class="form-section">
+        <h2>Add New Buddy</h2>
+        <form th:action="@{/addressbook/{id}/addBuddy(id=${book.id})}" method="post">
+            <div>
+                <label>Name:</label>
+                <input type="text" name="name" required />
+            </div>
+            <div>
+                <label>Address:</label>
+                <input type="text" name="address" required />
+            </div>
+            <div>
+                <label>Phone Number:</label>
+                <input type="text" name="phoneNumber" required />
+            </div>
+            <button type="submit">Add Buddy</button>
+        </form>
+    </div>
 
-        <li th:each="b : ${book.buddyList}">
-            <b th:text="${b.name}">Name</b>
-            —
+    <!-- Buddy List -->
+    <h2>Current Buddies</h2>
+    <div th:if="${book.buddyList.isEmpty()}">
+        <p>No buddies in this address book yet.</p>
+    </div>
+
+    <div th:unless="${book.buddyList.isEmpty()}">
+        <div class="buddy-item" th:each="b : ${book.buddyList}">
+            <strong th:text="${b.name}">Name</strong> —
+            <span th:text="${b.address}">Address</span> —
             <span th:text="${b.phoneNumber}">Phone</span>
-            —
-            <span th:text="${b.address}">Address</span>
-        </li>
-    </ul>
+            <form th:action="@{/addressbook/{bookId}/removeBuddy/{buddyId}(bookId=${book.id},buddyId=${b.id})}"
+                  method="post" style="display: inline;">
+                <button type="submit">Delete</button>
+            </form>
+        </div>
+    </div>
 
-    <p><a th:href="@{/addressbook/list}">Back</a></p>
+    <p><a th:href="@{/addressbook/list}">Back to list</a></p>
 </div>
 
 </body>
