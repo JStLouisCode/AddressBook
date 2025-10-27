@@ -19,26 +19,68 @@ public class AddressBookController {
     }
 
     // ---------------------------
-    // Thymeleaf GUI (Lab: list buddies view)
+    // Thymeleaf GUI (Part 1: Traditional Forms)
     // ---------------------------
 
-    // GET /addressbook/list  -> shows all address books (like your screenshot)
+    // GET /addressbook/list  -> shows all address books
     @GetMapping("/list")
     public String listBuddies(Model model) {
         model.addAttribute("addressBooks", addressBookRepository.findAll());
-        return "listBuddies"; // templates/listBuddies.html
+        return "listBuddies";
+    }
+
+    // POST /addressbook/create -> create new address book (form submission)
+    @PostMapping("/create")
+    public String createAddressBook() {
+        addressBookRepository.save(new AddressBook());
+        return "redirect:/addressbook/list";
     }
 
     // GET /addressbook/{id} -> page showing buddies for a specific address book
     @GetMapping("/{id}")
     public String showBook(@PathVariable Long id, Model model) {
         model.addAttribute("book", addressBookRepository.findById(id).orElse(null));
-        return "buddies"; // templates/buddies.html
+        return "buddies";
+    }
+
+    // POST /addressbook/{id}/addBuddy -> add buddy via form
+    @PostMapping("/{id}/addBuddy")
+    public String addBuddyForm(@PathVariable Long id,
+                               @RequestParam String name,
+                               @RequestParam String address,
+                               @RequestParam String phoneNumber) {
+        addressBookRepository.findById(id).ifPresent(book -> {
+            BuddyInfo buddy = new BuddyInfo(name, address, phoneNumber);
+            BuddyInfo savedBuddy = buddyInfoRepository.save(buddy);
+            book.addBuddy(savedBuddy);
+            addressBookRepository.save(book);
+        });
+        return "redirect:/addressbook/" + id;
+    }
+
+    // POST /addressbook/{bookId}/removeBuddy/{buddyId} -> remove buddy via form
+    @PostMapping("/{bookId}/removeBuddy/{buddyId}")
+    public String removeBuddyForm(@PathVariable Long bookId, @PathVariable Long buddyId) {
+        addressBookRepository.findById(bookId).ifPresent(book -> {
+            book.removeBuddyById(buddyId);
+            addressBookRepository.save(book);
+            buddyInfoRepository.deleteById(buddyId);
+        });
+        return "redirect:/addressbook/" + bookId;
     }
 
     // ---------------------------
-    // REST JSON (Lab: create/add/remove + get)
-    // Base path: /addressbook/api/...
+    // Single Page Application (Part 2)
+    // ---------------------------
+
+    // GET /addressbook/spa -> serve the SPA page
+    @GetMapping("/spa")
+    public String spa() {
+        return "spa";
+    }
+
+    // ---------------------------
+    // REST JSON API (used by SPA and tests)
     // ---------------------------
 
     // POST /addressbook/api  -> create an AddressBook
@@ -76,13 +118,12 @@ public class AddressBookController {
     public ResponseEntity<Void> removeBuddy(@PathVariable Long bookId, @PathVariable Long buddyId) {
         var opt = addressBookRepository.findById(bookId);
         if (opt.isEmpty()) {
-            return new ResponseEntity<Void>(HttpStatus.NOT_FOUND);  // explicit <Void>
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
         AddressBook book = opt.get();
         book.removeBuddyById(buddyId);
         addressBookRepository.save(book);
         buddyInfoRepository.deleteById(buddyId);
-        return ResponseEntity.noContent().build();                 // ResponseEntity<Void>
+        return ResponseEntity.noContent().build();
     }
-
 }
