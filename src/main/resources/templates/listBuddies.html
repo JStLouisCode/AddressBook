@@ -3,11 +3,14 @@
 <head>
     <meta charset="UTF-8" />
     <title>Address Books</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
         .book-item { padding: 10px; margin: 10px 0; background: #f0f0f0; border-radius: 5px; }
         .form-section { background: #e8f4f8; padding: 15px; margin: 20px 0; border-radius: 5px; }
         button { padding: 8px 15px; margin: 5px; cursor: pointer; }
+        .message { padding: 10px; margin: 10px 0; border-radius: 3px; }
+        .success { background: #d4edda; color: #155724; }
     </style>
 </head>
 <body>
@@ -16,27 +19,64 @@
 <!-- Create New Address Book Form -->
 <div class="form-section">
     <h2>Create New Address Book</h2>
-    <form th:action="@{/addressbook/create}" method="post">
+    <div id="create-message"></div>
+    <form id="create-book-form" th:action="@{/addressbook/create}" method="post">
         <button type="submit">Create New Address Book</button>
     </form>
 </div>
 
 <!-- List of Address Books -->
 <h2>Existing Address Books</h2>
-<div th:if="${addressBooks != null and !addressBooks.isEmpty()}">
-    <div class="book-item" th:each="book : ${addressBooks}">
-        AddressBook ID: <strong th:text="${book.id}">1</strong> -
-        <span th:text="${book.buddyList.size()} + ' buddies'">0 buddies</span>
-        <a th:href="@{/addressbook/{id}(id=${book.id})}">View Buddies</a>
+<div id="book-list-container">
+    <div th:if="${addressBooks != null and !addressBooks.isEmpty()}">
+        <div class="book-item" th:each="book : ${addressBooks}">
+            AddressBook ID: <strong th:text="${book.id}">1</strong> -
+            <span th:text="${book.buddyList.size()} + ' buddies'">0 buddies</span>
+            <a th:href="@{/addressbook/{id}(id=${book.id})}">View Buddies</a>
+        </div>
+    </div>
+
+    <div th:if="${addressBooks == null or addressBooks.isEmpty()}">
+        <p>No address books yet. Create one above!</p>
     </div>
 </div>
 
-<div th:if="${addressBooks == null or addressBooks.isEmpty()}">
-    <p>No address books yet. Create one above!</p>
-</div>
+<!-- Progressive Enhancement: JavaScript for AJAX -->
+<script>
+    $(document).ready(function() {
+        // Progressive enhancement: Intercept create book form submission
+        $("#create-book-form").on("submit", function(e) {
+            e.preventDefault(); // Prevent traditional form submission
 
-<hr>
-<p><a th:href="@{/addressbook/spa}">Try the Single Page Application (SPA) version</a></p>
+            // Make AJAX call instead
+            $.ajax({
+                type: "POST",
+                url: "/addressbook/api",
+                contentType: "application/json"
+            }).done(function(book) {
+                $("#create-message").html(`<div class="message success">Created Address Book with ID: ${book.id}</div>`);
+
+                // Add the new book to the list dynamically
+                const newBookHtml = `
+                    <div class="book-item">
+                        AddressBook ID: <strong>${book.id}</strong> -
+                        0 buddies
+                        <a href="/addressbook/${book.id}">View Buddies</a>
+                    </div>
+                `;
+
+                // Remove "no address books" message if it exists
+                if ($("#book-list-container").find("p").length > 0) {
+                    $("#book-list-container").empty();
+                }
+
+                $("#book-list-container").prepend(newBookHtml);
+            }).fail(function() {
+                $("#create-message").html('<div class="message error">Failed to create address book</div>');
+            });
+        });
+    });
+</script>
 
 </body>
 </html>
