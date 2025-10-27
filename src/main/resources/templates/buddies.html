@@ -3,12 +3,16 @@
 <head>
     <meta charset="UTF-8" />
     <title>Buddies</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
         .form-section { background: #f0f0f0; padding: 15px; margin: 20px 0; border-radius: 5px; }
         input { padding: 5px; margin: 5px; }
         button { padding: 8px 15px; margin: 5px; cursor: pointer; }
         .buddy-item { padding: 10px; margin: 5px 0; background: #fff; border: 1px solid #ddd; border-radius: 3px; }
+        .message { padding: 10px; margin: 10px 0; border-radius: 3px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
     </style>
 </head>
 <body>
@@ -26,18 +30,19 @@
     <!-- Add Buddy Form -->
     <div class="form-section">
         <h2>Add New Buddy</h2>
-        <form th:action="@{/addressbook/{id}/addBuddy(id=${book.id})}" method="post">
+        <div id="add-buddy-message"></div>
+        <form id="add-buddy-form" th:action="@{/addressbook/{id}/addBuddy(id=${book.id})}" method="post">
             <div>
                 <label>Name:</label>
-                <input type="text" name="name" required />
+                <input type="text" name="name" id="buddy-name" required />
             </div>
             <div>
                 <label>Address:</label>
-                <input type="text" name="address" required />
+                <input type="text" name="address" id="buddy-address" required />
             </div>
             <div>
                 <label>Phone Number:</label>
-                <input type="text" name="phoneNumber" required />
+                <input type="text" name="phoneNumber" id="buddy-phone" required />
             </div>
             <button type="submit">Add Buddy</button>
         </form>
@@ -45,24 +50,119 @@
 
     <!-- Buddy List -->
     <h2>Current Buddies</h2>
-    <div th:if="${book.buddyList.isEmpty()}">
-        <p>No buddies in this address book yet.</p>
-    </div>
+    <div id="buddy-list-container">
+        <div th:if="${book.buddyList.isEmpty()}">
+            <p>No buddies in this address book yet.</p>
+        </div>
 
-    <div th:unless="${book.buddyList.isEmpty()}">
-        <div class="buddy-item" th:each="b : ${book.buddyList}">
-            <strong th:text="${b.name}">Name</strong> —
-            <span th:text="${b.address}">Address</span> —
-            <span th:text="${b.phoneNumber}">Phone</span>
-            <form th:action="@{/addressbook/{bookId}/removeBuddy/{buddyId}(bookId=${book.id},buddyId=${b.id})}"
-                  method="post" style="display: inline;">
-                <button type="submit">Delete</button>
-            </form>
+        <div th:unless="${book.buddyList.isEmpty()}">
+            <div class="buddy-item" th:each="b : ${book.buddyList}">
+                <strong th:text="${b.name}">Name</strong> —
+                <span th:text="${b.address}">Address</span> —
+                <span th:text="${b.phoneNumber}">Phone</span>
+                <form class="delete-buddy-form" th:action="@{/addressbook/{bookId}/removeBuddy/{buddyId}(bookId=${book.id},buddyId=${b.id})}"
+                      method="post" style="display: inline;" th:data-buddy-id="${b.id}">
+                    <button type="submit">Delete</button>
+                </form>
+            </div>
         </div>
     </div>
 
     <p><a th:href="@{/addressbook/list}">Back to list</a></p>
 </div>
+
+<!-- Progressive Enhancement: JavaScript for AJAX -->
+<script th:if="${book != null}" th:inline="javascript">
+    /*<![CDATA[*/
+    $(document).ready(function() {
+        const bookId = /*[[${book.id}]]*/ 1;
+
+        // Progressive enhancement: Intercept add buddy form submission
+        $("#add-buddy-form").on("submit", function(e) {
+            e.preventDefault(); // Prevent traditional form submission
+
+            const name = $("#buddy-name").val();
+            const address = $("#buddy-address").val();
+            const phoneNumber = $("#buddy-phone").val();
+
+            const buddyData = {
+                name: name,
+                address: address,
+                phoneNumber: phoneNumber
+            };
+
+            // Make AJAX call instead
+            $.ajax({
+                type: "POST",
+                url: `/addressbook/api/${bookId}/buddies`,
+                data: JSON.stringify(buddyData),
+                contentType: "application/json"
+            }).done(function(book) {
+                $("#add-buddy-message").html('<div class="message success">Buddy added successfully!</div>');
+                $("#buddy-name").val("");
+                $("#buddy-address").val("");
+                $("#buddy-phone").val("");
+
+                // Update buddy list dynamically
+                updateBuddyList(book.buddyList);
+            }).fail(function() {
+                $("#add-buddy-message").html('<div class="message error">Failed to add buddy</div>');
+            });
+        });
+
+        // Progressive enhancement: Intercept delete buddy form submissions
+        $(document).on("submit", ".delete-buddy-form", function(e) {
+            e.preventDefault(); // Prevent traditional form submission
+
+            const form = $(this);
+            const buddyId = form.data("buddy-id");
+
+            // Make AJAX call instead
+            $.ajax({
+                type: "DELETE",
+                url: `/addressbook/api/${bookId}/buddies/${buddyId}`,
+                contentType: "application/json"
+            }).done(function() {
+                // Reload the book to get updated buddy list
+                $.ajax({
+                    type: "GET",
+                    url: `/addressbook/api/${bookId}`,
+                    contentType: "application/json"
+                }).done(function(book) {
+                    updateBuddyList(book.buddyList);
+                });
+            }).fail(function() {
+                alert("Failed to delete buddy");
+            });
+        });
+
+        // Helper function to update buddy list display
+        function updateBuddyList(buddies) {
+            const container = $("#buddy-list-container");
+            container.empty();
+
+            if (buddies.length === 0) {
+                container.html("<p>No buddies in this address book yet.</p>");
+                return;
+            }
+
+            buddies.forEach(function(buddy) {
+                const buddyHtml = `
+                    <div class="buddy-item">
+                        <strong>${buddy.name}</strong> —
+                        ${buddy.address} —
+                        ${buddy.phoneNumber}
+                        <form class="delete-buddy-form" method="post" style="display: inline;" data-buddy-id="${buddy.id}">
+                            <button type="submit">Delete</button>
+                        </form>
+                    </div>
+                `;
+                container.append(buddyHtml);
+            });
+        }
+    });
+    /*]]>*/
+</script>
 
 </body>
 </html>
