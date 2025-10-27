@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Address Book SPA</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+        .book-section { border: 1px solid #ccc; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        button { padding: 8px 15px; margin: 5px; cursor: pointer; }
+        input { padding: 5px; margin: 5px; }
+        .buddy-item { padding: 10px; margin: 5px 0; background: #f0f0f0; border-radius: 3px; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+<h1>Address Book </h1>
+
+<!-- Create Address Book Section -->
+<div class="book-section">
+    <h2>Create New Address Book</h2>
+    <button id="create-book-btn">Create Address Book</button>
+    <div id="create-book-message"></div>
+</div>
+
+<!-- Select Address Book Section -->
+<div class="book-section">
+    <h2>Select Address Book</h2>
+    <input type="number" id="book-id-input" placeholder="Enter Address Book ID">
+    <button id="load-book-btn">Load Address Book</button>
+    <div id="load-message"></div>
+</div>
+
+<!-- Current Address Book Display -->
+<div class="book-section" id="current-book-section" style="display: none;">
+    <h2>Address Book <span id="current-book-id"></span></h2>
+
+    <!-- Add Buddy Form -->
+    <div>
+        <h3>Add New Buddy</h3>
+        <input type="text" id="buddy-name" placeholder="Name">
+        <input type="text" id="buddy-address" placeholder="Address">
+        <input type="text" id="buddy-phone" placeholder="Phone Number">
+        <button id="add-buddy-btn">Add Buddy</button>
+        <div id="add-buddy-message"></div>
+    </div>
+
+    <!-- Buddy List -->
+    <div>
+        <h3>Buddies</h3>
+        <div id="buddy-list"></div>
+    </div>
+</div>
+
+<p><a href="/addressbook/list">Back to Traditional View</a></p>
+
+<script>
+    let currentBookId = null;
+
+    $(document).ready(function() {
+        // Create Address Book
+        $("#create-book-btn").on("click", function() {
+            $.ajax({
+                type: "POST",
+                url: "/addressbook/api",
+                contentType: "application/json"
+            }).done(function(book) {
+                currentBookId = book.id;
+                $("#create-book-message").html(`<span class="success">Created Address Book with ID: ${book.id}</span>`);
+                loadBook(book.id);
+            }).fail(function() {
+                $("#create-book-message").html(`<span class="error">Failed to create address book</span>`);
+            });
+        });
+
+        // Load Address Book
+        $("#load-book-btn").on("click", function() {
+            const bookId = $("#book-id-input").val();
+            if (!bookId) {
+                $("#load-message").html(`<span class="error">Please enter an address book ID</span>`);
+                return;
+            }
+            loadBook(bookId);
+        });
+
+        // Add Buddy
+        $("#add-buddy-btn").on("click", function() {
+            const name = $("#buddy-name").val();
+            const address = $("#buddy-address").val();
+            const phone = $("#buddy-phone").val();
+
+            if (!name || !address || !phone) {
+                $("#add-buddy-message").html(`<span class="error">Please fill all fields</span>`);
+                return;
+            }
+
+            const buddyData = {
+                name: name,
+                address: address,
+                phoneNumber: phone
+            };
+
+            $.ajax({
+                type: "POST",
+                url: `/addressbook/api/${currentBookId}/buddies`,
+                data: JSON.stringify(buddyData),
+                contentType: "application/json"
+            }).done(function(book) {
+                $("#add-buddy-message").html(`<span class="success">Buddy added successfully!</span>`);
+                $("#buddy-name").val("");
+                $("#buddy-address").val("");
+                $("#buddy-phone").val("");
+                displayBuddies(book.buddyList);
+            }).fail(function() {
+                $("#add-buddy-message").html(`<span class="error">Failed to add buddy</span>`);
+            });
+        });
+
+        // Function to load and display an address book
+        function loadBook(bookId) {
+            $.ajax({
+                type: "GET",
+                url: `/addressbook/api/${bookId}`,
+                contentType: "application/json"
+            }).done(function(book) {
+                currentBookId = book.id;
+                $("#load-message").html(`<span class="success">Loaded Address Book ${book.id}</span>`);
+                $("#current-book-id").text(book.id);
+                $("#current-book-section").show();
+                displayBuddies(book.buddyList);
+            }).fail(function() {
+                $("#load-message").html(`<span class="error">Address Book not found</span>`);
+                $("#current-book-section").hide();
+            });
+        }
+
+        // Function to display buddies
+        function displayBuddies(buddies) {
+            const buddyListDiv = $("#buddy-list");
+            buddyListDiv.empty();
+
+            if (buddies.length === 0) {
+                buddyListDiv.html("<p>No buddies in this address book</p>");
+                return;
+            }
+
+            buddies.forEach(function(buddy) {
+                const buddyHtml = `
+                        <div class="buddy-item">
+                            <strong>${buddy.name}</strong> -
+                            ${buddy.address} -
+                            ${buddy.phoneNumber}
+                            <button class="delete-buddy-btn" data-buddy-id="${buddy.id}">Delete</button>
+                        </div>
+                    `;
+                buddyListDiv.append(buddyHtml);
+            });
+
+            // Attach delete handlers
+            $(".delete-buddy-btn").on("click", function() {
+                const buddyId = $(this).data("buddy-id");
+                deleteBuddy(buddyId);
+            });
+        }
+
+        // Function to delete a buddy
+        function deleteBuddy(buddyId) {
+            $.ajax({
+                type: "DELETE",
+                url: `/addressbook/api/${currentBookId}/buddies/${buddyId}`,
+                contentType: "application/json"
+            }).done(function() {
+                loadBook(currentBookId); // Reload the book to refresh the list
+            }).fail(function() {
+                alert("Failed to delete buddy");
+            });
+        }
+    });
+</script>
+</body>
+</html>
