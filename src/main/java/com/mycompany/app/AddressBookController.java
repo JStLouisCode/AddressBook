@@ -20,6 +20,7 @@ public class AddressBookController {
 
     // ---------------------------
     // Thymeleaf GUI (Part 1: Traditional Forms)
+    // These delegate to the REST API methods
     // ---------------------------
 
     // GET /addressbook/list  -> shows all address books
@@ -29,10 +30,10 @@ public class AddressBookController {
         return "listBuddies";
     }
 
-    // POST /addressbook/create -> create new address book (form submission)
+    // POST /addressbook/create -> create new address book (delegates to REST API)
     @PostMapping("/create")
     public String createAddressBook() {
-        addressBookRepository.save(new AddressBook());
+        createBook(); // Delegate to REST API method
         return "redirect:/addressbook/list";
     }
 
@@ -43,44 +44,28 @@ public class AddressBookController {
         return "buddies";
     }
 
-    // POST /addressbook/{id}/addBuddy -> add buddy via form
+    // POST /addressbook/{id}/addBuddy -> add buddy via form (delegates to REST API)
     @PostMapping("/{id}/addBuddy")
     public String addBuddyForm(@PathVariable Long id,
                                @RequestParam String name,
                                @RequestParam String address,
                                @RequestParam String phoneNumber) {
-        addressBookRepository.findById(id).ifPresent(book -> {
-            BuddyInfo buddy = new BuddyInfo(name, address, phoneNumber);
-            BuddyInfo savedBuddy = buddyInfoRepository.save(buddy);
-            book.addBuddy(savedBuddy);
-            addressBookRepository.save(book);
-        });
+        // Delegate to REST API method
+        BuddyInfo buddy = new BuddyInfo(name, address, phoneNumber);
+        addBuddy(id, buddy);
         return "redirect:/addressbook/" + id;
     }
 
-    // POST /addressbook/{bookId}/removeBuddy/{buddyId} -> remove buddy via form
+    // POST /addressbook/{bookId}/removeBuddy/{buddyId} -> remove buddy via form (delegates to REST API)
     @PostMapping("/{bookId}/removeBuddy/{buddyId}")
     public String removeBuddyForm(@PathVariable Long bookId, @PathVariable Long buddyId) {
-        addressBookRepository.findById(bookId).ifPresent(book -> {
-            book.removeBuddyById(buddyId);
-            addressBookRepository.save(book);
-            buddyInfoRepository.deleteById(buddyId);
-        });
+        // Delegate to REST API method
+        removeBuddy(bookId, buddyId);
         return "redirect:/addressbook/" + bookId;
     }
 
     // ---------------------------
-    // Single Page Application (Part 2)
-    // ---------------------------
-
-    // GET /addressbook/spa -> serve the SPA page
-    @GetMapping("/spa")
-    public String spa() {
-        return "spa";
-    }
-
-    // ---------------------------
-    // REST JSON API (used by SPA and tests)
+    // REST JSON API (Part 2: Used by AJAX and delegated to by forms)
     // ---------------------------
 
     // POST /addressbook/api  -> create an AddressBook
