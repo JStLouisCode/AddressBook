@@ -3,17 +3,40 @@
 <head>
     <meta charset="UTF-8" />
     <title>Address Books</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+        .book-item { padding: 10px; margin: 10px 0; background: #f0f0f0; border-radius: 5px; }
+        .form-section { background: #e8f4f8; padding: 15px; margin: 20px 0; border-radius: 5px; }
+        button { padding: 8px 15px; margin: 5px; cursor: pointer; }
+    </style>
 </head>
 <body>
 <h1>All Address Books</h1>
 
-<ul>
-    <li th:each="book : ${addressBooks}">
-        AddressBook ID:
-        <span th:text="${book.id}">1</span>
-        -
-        <a th:href="@{|/addressbook/${book.id}|}">View Buddies</a>
-    </li>
-</ul>
+<!-- Create New Address Book Form -->
+<div class="form-section">
+    <h2>Create New Address Book</h2>
+    <form th:action="@{/addressbook/create}" method="post">
+        <button type="submit">Create New Address Book</button>
+    </form>
+</div>
+
+<!-- List of Address Books -->
+<h2>Existing Address Books</h2>
+<div th:if="${addressBooks != null and !addressBooks.isEmpty()}">
+    <div class="book-item" th:each="book : ${addressBooks}">
+        AddressBook ID: <strong th:text="${book.id}">1</strong> -
+        <span th:text="${book.buddyList.size()} + ' buddies'">0 buddies</span>
+        <a th:href="@{/addressbook/{id}(id=${book.id})}">View Buddies</a>
+    </div>
+</div>
+
+<div th:if="${addressBooks == null or addressBooks.isEmpty()}">
+    <p>No address books yet. Create one above!</p>
+</div>
+
+<hr>
+<p><a th:href="@{/addressbook/spa}">Try the Single Page Application (SPA) version</a></p>
+
 </body>
 </html>
